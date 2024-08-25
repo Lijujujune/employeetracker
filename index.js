@@ -3,6 +3,9 @@ const inquirer = require('inquirer');
 
 const PORT = process.env.PORT || 3001;
 
+const { Console } = require('console');
+const { Transform } = require('stream');
+
 // Create a PostgreSQL Pool
 const pool = new Pool({
   user: 'postgres',  
@@ -34,6 +37,11 @@ function startApp() {
         'Add a Role',
         'Add an Employee',
         'Update an Employee Role',
+        'Update an Employee Manager',
+        'View employees by Manager',
+        'View employees by Department',
+        'Delete Department Role and Employee',
+        'View Department Budget',
         'Exit'
       ]
     })
@@ -60,11 +68,30 @@ function startApp() {
         case 'Update an Employee Role':
           updateEmployeeRole();
           break;
+        //bonus
+        case 'Update an Employee Manager':
+          updateEmployeeManager();
+        break;
+        case 'View employees by manager':
+            viewEmployeesbyManager();
+        break;
+        case 'View employees by Department':
+            viewEmployeesbyDepartment();
+        break;
+        case 'Delete Department Role and Employee':
+            deleteDepartmentRoleEmployee();
+        break;
+        case 'View Department Budget':
+            viewDepartmentBudget();
+        break;
+        //end bonus
         case 'Exit':
           pool.end();
           break;
         default:
           break;
+          
+          
       }
     });
 }
@@ -263,4 +290,258 @@ function updateEmployeeRole() {
         .catch(err => console.error('Error executing query', err.stack));
     })
     .catch(err => console.error('Error executing query', err.stack));
+}
+
+//Bonus Functions
+// Function to update an employee manager
+function updateEmployeeManager() {
+    pool.query('SELECT * FROM employees')
+        .then(res => {
+            const employees = res.rows.map(employee => ({
+                name: `${employee.first_name} ${employee.last_name}`,
+                value: employee.id
+            }));
+
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'employeeId',
+                    message: "Which employee's manager do you want to update?",
+                    choices: employees
+                },
+                {
+                    type: 'list',
+                    name: 'managerId',
+                    message: "Who is the employee's new manager?",
+                    choices: employees.concat([{ name: 'None', value: null }])
+                }
+            ]).then(answers => {
+                const { employeeId, managerId } = answers;
+                pool.query('UPDATE employees SET manager_id = $1 WHERE id = $2', [managerId, employeeId])
+                    .then(() => {
+                        console.log('Employee manager updated successfully!');
+                        startApp();
+                    })
+                    .catch(err => console.error('Error updating employee manager', err.stack));
+            });
+        })
+        .catch(err => console.error('Error fetching employees', err.stack));
+}
+
+// Function to view employees by manager
+function viewEmployeesbyManager() {
+    const query = `
+        SELECT DISTINCT m.id, CONCAT(m.first_name, ' ', m.last_name) AS manager 
+        FROM employees e
+        JOIN employees m ON e.manager_id = m.id`;
+    
+    pool.query(query)
+        .then(res => {
+            const managers = res.rows.map(manager => ({
+                name: manager.manager,
+                value: manager.id
+            }));
+
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'managerId',
+                    message: 'Select a manager to view their employees:',
+                    choices: managers
+                }
+            ]).then(answer => {
+                const { managerId } = answer;
+                const query = `
+                    SELECT e.id, e.first_name, e.last_name, r.title 
+                    FROM employees e 
+                    LEFT JOIN roles r ON e.role_id = r.id 
+                    WHERE e.manager_id = $1`;
+                pool.query(query, [managerId])
+                    .then(res => {
+                        console.table(res.rows);
+                        startApp();
+                    })
+                    .catch(err => console.error('Error fetching employees by manager', err.stack));
+            });
+        })
+        .catch(err => console.error('Error fetching managers', err.stack));
+}
+
+// Function to view employees by department
+function viewEmployeesbyDepartment() {
+    const query = 'SELECT * FROM departments';
+    
+    pool.query(query)
+        .then(res => {
+            const departments = res.rows.map(department => ({
+                name: department.name,
+                value: department.id
+            }));
+
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'departmentId',
+                    message: 'Select a department to view its employees:',
+                    choices: departments
+                }
+            ]).then(answer => {
+                const { departmentId } = answer;
+                const query = `
+                    SELECT e.id, e.first_name, e.last_name, r.title 
+                    FROM employees e 
+                    LEFT JOIN roles r ON e.role_id = r.id 
+                    LEFT JOIN departments d ON r.department_id = d.id 
+                    WHERE d.id = $1`;
+                pool.query(query, [departmentId])
+                    .then(res => {
+                        console.table(res.rows);
+                        startApp();
+                    })
+                    .catch(err => console.error('Error fetching employees by department', err.stack));
+            });
+        })
+        .catch(err => console.error('Error fetching departments', err.stack));
+}
+//delete department, role, employee
+function deleteDepartmentRoleEmployee() {
+    inquirer.prompt([
+        {
+            type: 'list',
+            name: 'deleteChoice',
+            message: 'What would you like to delete?',
+            choices: ['Department', 'Role', 'Employee']
+        }
+    ]).then(answer => {
+        switch (answer.deleteChoice) {
+            case 'Department':
+                deleteDepartment();
+                break;
+            case 'Role':
+                deleteRole();
+                break;
+            case 'Employee':
+                deleteEmployee();
+                break;
+        }
+    });
+}
+
+function deleteDepartment() {
+    pool.query('SELECT * FROM departments')
+        .then(res => {
+            const departments = res.rows.map(department => ({
+                name: department.name,
+                value: department.id
+            }));
+
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'departmentId',
+                    message: 'Select a department to delete:',
+                    choices: departments
+                }
+            ]).then(answer => {
+                const { departmentId } = answer;
+                pool.query('DELETE FROM departments WHERE id = $1', [departmentId])
+                    .then(() => {
+                        console.log('Department deleted successfully!');
+                        startApp();
+                    })
+                    .catch(err => console.error('Error deleting department', err.stack));
+            });
+        })
+        .catch(err => console.error('Error fetching departments', err.stack));
+}
+
+function deleteRole() {
+    pool.query('SELECT * FROM roles')
+        .then(res => {
+            const roles = res.rows.map(role => ({
+                name: role.title,
+                value: role.id
+            }));
+
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'roleId',
+                    message: 'Select a role to delete:',
+                    choices: roles
+                }
+            ]).then(answer => {
+                const { roleId } = answer;
+                pool.query('DELETE FROM roles WHERE id = $1', [roleId])
+                    .then(() => {
+                        console.log('Role deleted successfully!');
+                        startApp();
+                    })
+                    .catch(err => console.error('Error deleting role', err.stack));
+            });
+        })
+        .catch(err => console.error('Error fetching roles', err.stack));
+}
+
+function deleteEmployee() {
+    pool.query('SELECT * FROM employees')
+        .then(res => {
+            const employees = res.rows.map(employee => ({
+                name: `${employee.first_name} ${employee.last_name}`,
+                value: employee.id
+            }));
+
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'employeeId',
+                    message: 'Select an employee to delete:',
+                    choices: employees
+                }
+            ]).then(answer => {
+                const { employeeId } = answer;
+                pool.query('DELETE FROM employees WHERE id = $1', [employeeId])
+                    .then(() => {
+                        console.log('Employee deleted successfully!');
+                        startApp();
+                    })
+                    .catch(err => console.error('Error deleting employee', err.stack));
+            });
+        })
+        .catch(err => console.error('Error fetching employees', err.stack));
+}
+//Function to view department budget
+function viewDepartmentBudget() {
+    const query = 'SELECT * FROM departments';
+    
+    pool.query(query)
+        .then(res => {
+            const departments = res.rows.map(department => ({
+                name: department.name,
+                value: department.id
+            }));
+
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'departmentId',
+                    message: 'Select a department to view its budget:',
+                    choices: departments
+                }
+            ]).then(answer => {
+                const { departmentId } = answer;
+                const query = `
+                    SELECT SUM(r.salary) AS total_budget 
+                    FROM employees e 
+                    LEFT JOIN roles r ON e.role_id = r.id 
+                    WHERE r.department_id = $1`;
+                pool.query(query, [departmentId])
+                    .then(res => {
+                        console.log(`Total budget for department: $${res.rows[0].total_budget}`);
+                        startApp();
+                    })
+                    .catch(err => console.error('Error calculating department budget', err.stack));
+            });
+        })
+        .catch(err => console.error('Error fetching departments', err.stack));
 }
