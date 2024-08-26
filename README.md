@@ -3,13 +3,16 @@
     An Employee Management System command-line application built using Node.js and PostgreSQL. This application allows users to manage an employee database, including viewing departments, roles, employees, and performing CRUD operations such as adding, updating, and deleting records.
 
 # Table of Contents
-
+	•	Useful Links
 	•	Installation
 	•	Usage
 	•	Features
 	•	Database Structure
 	•	License
 
+# Useful Links
+	Github: https://github.com/Lijujujune/employeetracker.git
+	Walkthrough video: https://bootcampspot.instructuremedia.com/embed/a22243f4-9c96-4e4e-a3b2-ab9a6cee6b26
 # Installation
     
     1.	Clone the repository:

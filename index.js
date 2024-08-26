@@ -3,9 +3,6 @@ const inquirer = require('inquirer');
 
 const PORT = process.env.PORT || 3001;
 
-const { Console } = require('console');
-const { Transform } = require('stream');
-
 // Create a PostgreSQL Pool
 const pool = new Pool({
   user: 'postgres',  
