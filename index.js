@@ -38,7 +38,7 @@ function startApp() {
         'Add an Employee',
         'Update an Employee Role',
         'Update an Employee Manager',
-        'View employees by Manager',
+        // 'View employees by Manager',
         'View employees by Department',
         'Delete Department Role and Employee',
         'View Department Budget',
@@ -72,9 +72,9 @@ function startApp() {
         case 'Update an Employee Manager':
           updateEmployeeManager();
         break;
-        case 'View employees by manager':
-            viewEmployeesbyManager();
-        break;
+        // case 'View employees by manager':
+        //     viewEmployeesbyManager();
+        // break;
         case 'View employees by Department':
             viewEmployeesbyDepartment();
         break;
@@ -328,44 +328,59 @@ function updateEmployeeManager() {
         .catch(err => console.error('Error fetching employees', err.stack));
 }
 
-// Function to view employees by manager
-function viewEmployeesbyManager() {
-    const query = `
-        SELECT DISTINCT m.id, CONCAT(m.first_name, ' ', m.last_name) AS manager 
-        FROM employees e
-        JOIN employees m ON e.manager_id = m.id`;
-    
-    pool.query(query)
-        .then(res => {
-            const managers = res.rows.map(manager => ({
-                name: manager.manager,
-                value: manager.id
-            }));
+// // Function to view employees by manager
+// function viewEmployeesbyManager() {
+//     const query = `
+//         SELECT DISTINCT m.id, CONCAT(m.first_name, ' ', m.last_name) AS manager 
+//         FROM employees e
+//         JOIN employees m ON e.manager_id = m.id`;
 
-            inquirer.prompt([
-                {
-                    type: 'list',
-                    name: 'managerId',
-                    message: 'Select a manager to view their employees:',
-                    choices: managers
-                }
-            ]).then(answer => {
-                const { managerId } = answer;
-                const query = `
-                    SELECT e.id, e.first_name, e.last_name, r.title 
-                    FROM employees e 
-                    LEFT JOIN roles r ON e.role_id = r.id 
-                    WHERE e.manager_id = $1`;
-                pool.query(query, [managerId])
-                    .then(res => {
-                        console.table(res.rows);
-                        startApp();
-                    })
-                    .catch(err => console.error('Error fetching employees by manager', err.stack));
-            });
-        })
-        .catch(err => console.error('Error fetching managers', err.stack));
-}
+//     pool.query(query)
+//         .then(res => {
+//             if (res.rows.length === 0) {
+//                 console.log('No managers found. Please ensure that employees have managers assigned.');
+//                 return startApp();  // Restart the app if no managers are found
+//             }
+
+//             const managers = res.rows.map(manager => ({
+//                 name: manager.manager,
+//                 value: manager.id
+//             }));
+
+//             console.log('Managers available:', managers);  // Debugging log
+
+//             inquirer.prompt([
+//                 {
+//                     type: 'list',
+//                     name: 'managerId',
+//                     message: 'Select a manager to view their employees:',
+//                     choices: managers
+//                 }
+//             ]).then(answer => {
+//                 const { managerId } = answer;
+//                 const employeeQuery = `
+//                     SELECT e.id, e.first_name, e.last_name, r.title 
+//                     FROM employees e 
+//                     LEFT JOIN roles r ON e.role_id = r.id 
+//                     WHERE e.manager_id = $1`;
+
+//                 pool.query(employeeQuery, [managerId])
+//                     .then(res => {
+//                         if (res.rows.length === 0) {
+//                             console.log('No employees found under this manager.');
+//                         } else {
+//                             console.table(res.rows);
+//                         }
+//                         startApp();
+//                     })
+//                     .catch(err => console.error('Error fetching employees by manager:', err.stack));
+//             }).catch(err => {
+//                 console.error('Error with inquirer prompt:', err);
+//                 startApp();
+//             });
+//         })
+//         .catch(err => console.error('Error fetching managers:', err.stack));
+// }
 
 // Function to view employees by department
 function viewEmployeesbyDepartment() {
